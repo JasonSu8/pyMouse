@@ -16,10 +16,10 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from scipy import io
 import time
-from mouseTouch import dataProcessing
+import dataProcessing
 from skimage.morphology import skeletonize as skn
 
-matPath = '/data/up+down.mat'
+matPath = 'data/up+down.mat'
 d1 = io.loadmat(matPath)
 up = d1['up']
 down = d1['down']
@@ -28,7 +28,7 @@ def batchfnc():
     import tkinter as tk
     from tkinter import filedialog
     root=tk.Tk()
-    defaultFolder = '/media/yangx/YXHD-01/data_shared/hangryvideo/'
+    defaultFolder = '/'
     currentpath = os.getcwd()
     os.chdir(defaultFolder)
     folderPath = filedialog.askdirectory()
