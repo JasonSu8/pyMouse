@@ -16,6 +16,8 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from scipy import io
 import time
+import tkinter as tk
+from tkinter import filedialog
 import dataProcessing
 from skimage.morphology import skeletonize as skn
 
@@ -25,8 +27,6 @@ up = d1['up']
 down = d1['down']
 regr = dataProcessing.randomForest4up(up,down,100)
 def batchfnc():
-    import tkinter as tk
-    from tkinter import filedialog
     root=tk.Tk()
     defaultFolder = '/'
     currentpath = os.getcwd()
@@ -38,9 +38,10 @@ def batchfnc():
 #    time.sleep(4200)
     for vidPath in vidList:
         if os.path.isdir(folderPath):
+            print(vidPath)
             mouseLocalization(vidPath)
     os.chdir(currentpath)
-    return(0) 
+    return(0)     
     
 def mouseLocalization(vidPath, vidShow=True):
     fcnBegin = time.time()
@@ -56,8 +57,8 @@ def mouseLocalization(vidPath, vidShow=True):
     csv2write = filename+'-imr.csv'
     csvPath= os.path.join(folderPath,csv2write)
     
-    background = backgroundCaculation(vidPath)
-    grayBack = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
+    grayBack,roi = backgroundCalculation(vidPath)
+    
     
     vid = cv2.VideoCapture(vidPath)
     nFrames = np.int0(vid.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -76,15 +77,6 @@ def mouseLocalization(vidPath, vidShow=True):
     term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
     MouseThreshold = 8
-    
-    darkBack = grayBack.copy()
-    cv2.floodFill(darkBack,None,(50,270),0,[2,2,2],[2,2,2])
-    cv2.floodFill(darkBack,None,(900,270),0,[1,1,1],[1,1,1])
-    darkBack = cv2.morphologyEx(darkBack,cv2.MORPH_CLOSE,kernel,iterations=3)
-    darkBack = 255*np.uint8(darkBack<MouseThreshold)
-    cv2.floodFill(darkBack,None,(480,270),128)
-    roi = 255*np.uint8(darkBack==128)
-    plt.imshow(roi)
     
     l,t,w,h = np.int(width/3),np.int(height/3),np.int(width/3),np.int(height/3)  # simply hardcoded the values
     trackWindow = (l,t,w,h)
@@ -295,12 +287,14 @@ def mouseLocalization(vidPath, vidShow=True):
     print('time elapse is %.1f min\n' %telapse)
     return(rectArray,fsumArray)
 
-def backgroundCaculation(vidPath):   
+def backgroundCalculation(vidPath):   
     vid = cv2.VideoCapture(vidPath)
     nFrames = np.int0(vid.get(cv2.CAP_PROP_FRAME_COUNT))
     width = np.int0(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = np.int0(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = np.int0(vid.get(cv2.CAP_PROP_FPS))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    MouseThreshold = 8
     background = np.zeros([height,width,3],dtype='float32')
     for iloop in range(nFrames):
         ret, frameMat = vid.read()
@@ -309,9 +303,21 @@ def backgroundCaculation(vidPath):
         if iloop>=fps*120:
             break
         background = background + frameMat
-    background = np.uint8(background/(60*fps))
     vid.release()
-    return(background)
+    background = np.uint8(background/(60*fps))
+    grayBack = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
+    darkBack = grayBack.copy()
+    cv2.floodFill(darkBack,None,(50,270),0,[2,2,2],[2,2,2])
+    cv2.floodFill(darkBack,None,(900,270),0,[1,1,1],[1,1,1])
+    darkBack = cv2.morphologyEx(darkBack,cv2.MORPH_CLOSE,kernel,iterations=3)
+    darkBack = 255*np.uint8(darkBack<MouseThreshold)
+    cv2.floodFill(darkBack,None,(480,270),128)
+    roi = 255*np.uint8(darkBack==128)
+    plt.figure(1)
+    plt.imshow(grayBack)
+    plt.figure(2)
+    plt.imshow(roi)
+    return(grayBack,roi)
 
 def rotation(img,center,angle,scale=1):
     (h, w) = img.shape[:2]
